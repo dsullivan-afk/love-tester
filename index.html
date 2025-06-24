@@ -1,0 +1,707 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Love Tester v7.0</title>
+    <style>
+        body {
+            background: #0a0a0a;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            margin: 0;
+            overflow: hidden;
+        }
+        .dashboard, .results-screen {
+            background: #1a1a1a;
+            border: 2px solid #0f0;
+            padding: 20px;
+            border-radius: 10px;
+            box-shadow: 0 0 20px rgba(0, 255, 0, 0.3);
+            width: 600px;
+            text-align: center;
+            position: absolute;
+        }
+        .results-screen {
+            display: none;
+        }
+        h1 {
+            font-size: 24px;
+            text-transform: uppercase;
+            margin-bottom: 20px;
+            animation: flicker 2s infinite;
+        }
+        @keyframes flicker {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.8; }
+        }
+        input {
+            background: #000;
+            border: 1px solid #0f0;
+            color: #0f0;
+            font-family: 'Courier New', monospace;
+            padding: 10px;
+            margin: 10px 0;
+            width: 80%;
+            border-radius: 5px;
+        }
+        button {
+            background: #0f0;
+            color: #000;
+            border: none;
+            padding: 10px 20px;
+            font-family: 'Courier New', monospace;
+            cursor: pointer;
+            border-radius: 5px;
+            text-transform: uppercase;
+            transition: background 0.3s;
+        }
+        button:hover {
+            background: #00cc00;
+        }
+        #loadingScreen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: #0a0a0a;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            flex-direction: column;
+            z-index: 10;
+        }
+        #radar, #waveform, #heartRate, #diagnosticGraph {
+            margin: 10px 0;
+        }
+        #binaryCalc, #randomCalc {
+            font-size: 14px;
+            height: 50px;
+            overflow: hidden;
+            white-space: nowrap;
+            margin: 10px 0;
+        }
+        .loading-text {
+            font-size: 16px;
+            animation: pulse 1.5s infinite;
+        }
+        @keyframes pulse {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.5; }
+        }
+        .terminal-line {
+            margin: 5px 0;
+            opacity: 0;
+            animation: fadeIn 0.5s forwards;
+        }
+        @keyframes fadeIn {
+            to { opacity: 1; }
+        }
+        #resultScore {
+            font-size: 32px;
+            margin: 20px 0;
+        }
+        .flash-high {
+            animation: flashHigh 0.4s infinite;
+        }
+        .flash-medium {
+            animation: flashMedium 0.6s infinite;
+        }
+        .flash-low {
+            animation: flashLow 0.8s infinite;
+        }
+        @keyframes flashHigh {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.2; }
+        }
+        @keyframes flashMedium {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.4; }
+        }
+        @keyframes flashLow {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.6; }
+        }
+        .result-details {
+            font-size: 14px;
+            margin-top: 10px;
+        }
+        .diagnostic-panel {
+            border: 1px solid #0f0;
+            padding: 10px;
+            margin-top: 15px;
+            background: #111;
+            border-radius: 5px;
+        }
+        .typing {
+            border-right: 2px solid #0f0;
+            animation: blink 0.7s step-end infinite;
+        }
+        @keyframes blink {
+            50% { border-color: transparent; }
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 15px;
+            font-size: 12px;
+        }
+        th, td {
+            border: 1px solid #0f0;
+            padding: 5px;
+            text-align: left;
+        }
+        th {
+            background: #222;
+        }
+    </style>
+</head>
+<body>
+    <div id="loadingScreen">
+        <canvas id="radar" width="200" height="200"></canvas>
+        <canvas id="waveform" width="200" height="50"></canvas>
+        <canvas id="heartRate" width="200" height="50"></canvas>
+        <div id="binaryCalc" class="terminal-line"></div>
+        <div id="randomCalc" class="terminal-line"></div>
+        <div class="loading-text">Processing Love Matrix...</div>
+    </div>
+    <div class="dashboard" id="inputScreen">
+        <h1>Love Tester v7.0</h1>
+        <div class="terminal-line">
+            <input type="text" id="name1" placeholder="Enter First Name">
+        </div>
+        <div class="terminal-line">
+            <input type="text" id="name2" placeholder="Enter Second Name">
+        </div>
+        <div class="terminal-line">
+            <button onclick="startLoveScan()">Initiate Love Scan</button>
+        </div>
+    </div>
+    <div class="results-screen" id="resultsScreen">
+        <h1>Love Scan Diagnostics</h1>
+        <div id="resultScore" class="terminal-line"></div>
+        <div id="resultMessage" class="terminal-line result-details"></div>
+        <canvas id="diagnosticGraph" width="500" height="150"></canvas>
+        <div class="diagnostic-panel">
+            <table id="diagnosticTable">
+                <tr><th>Diagnostic</th><th>Value</th></tr>
+                <tr><td>Chemistry Factor</td><td id="chemistryFactor"></td></tr>
+                <tr><td>Sync Ratio</td><td id="syncRatio"></td></tr>
+                <tr><td>Emotional Resonance</td><td id="emotionalResonance"></td></tr>
+                <tr><td>Affinity Index</td><td id="affinityIndex"></td></tr>
+                <tr><td>Vibe Cohesion</td><td id="vibeCohesion"></td></tr>
+                <tr><td>Pulse Harmony</td><td id="pulseHarmony"></td></tr>
+                <tr><td>Spark Intensity</td><td id="sparkIntensity"></td></tr>
+                <tr><td>Bond Stability</td><td id="bondStability"></td></tr>
+                <tr><td>Aura Alignment</td><td id="auraAlignment"></td></tr>
+            </table>
+        </div>
+        <div class="terminal-line">
+            <button onclick="returnToInput()">Run New Scan</button>
+        </div>
+    </div>
+    <script>
+        function startLoveScan() {
+            const name1 = document.getElementById('name1').value.trim().toLowerCase();
+            const name2 = document.getElementById('name2').value.trim().toLowerCase();
+            const inputScreen = document.getElementById('inputScreen');
+            const loadingScreen = document.getElementById('loadingScreen');
+
+            if (!name1 || !name2) {
+                const tempDiv = document.createElement('div');
+                tempDiv.className = 'terminal-line';
+                tempDiv.textContent = '[ERROR] Input fields cannot be empty.';
+                inputScreen.appendChild(tempDiv);
+                setTimeout(() => tempDiv.remove(), 2000);
+                return;
+            }
+
+            // Show loading screen and start animations
+            inputScreen.style.display = 'none';
+            loadingScreen.style.display = 'flex';
+            startRadar();
+            startWaveform();
+            startHeartRate();
+            startBinaryCalc();
+            startRandomCalc();
+
+            setTimeout(() => {
+                // Stop animations and hide loading screen
+                stopRadar();
+                stopWaveform();
+                stopHeartRate();
+                stopBinaryCalc();
+                stopRandomCalc();
+                loadingScreen.style.display = 'none';
+
+                // Show results screen with typing effect
+                const resultsScreen = document.getElementById('resultsScreen');
+                resultsScreen.style.display = 'block';
+
+                const score = generateLoveScore(name1, name2);
+                const chemistry = generateChemistryFactor(name1, name2);
+                const sync = generateSyncRatio(name1, name2);
+                const resonance = generateEmotionalResonance(name1, name2);
+                const affinity = generateAffinityIndex(name1, name2);
+                const vibe = generateVibeCohesion(name1, name2);
+                const pulse = generatePulseHarmony(name1, name2);
+                const spark = generateSparkIntensity(name1, name2);
+                const bond = generateBondStability(name1, name2);
+                const aura = generateAuraAlignment(name1, name2);
+
+                // Draw diagnostic graph
+                drawDiagnosticGraph([chemistry, sync, resonance, affinity, vibe, pulse, spark, bond, aura]);
+
+                // Typing effect for results
+                typeResults(score, chemistry, sync, resonance, affinity, vibe, pulse, spark, bond, aura);
+            }, 6000); // 6-second loading duration
+        }
+
+        function typeResults(score, chemistry, sync, resonance, affinity, vibe, pulse, spark, bond, aura) {
+            const resultScore = document.getElementById('resultScore');
+            const resultMessage = document.getElementById('resultMessage');
+            const chemistryFactor = document.getElementById('chemistryFactor');
+            const syncRatio = document.getElementById('syncRatio');
+            const emotionalResonance = document.getElementById('emotionalResonance');
+            const affinityIndex = document.getElementById('affinityIndex');
+            const vibeCohesion = document.getElementById('vibeCohesion');
+            const pulseHarmony = document.getElementById('pulseHarmony');
+            const sparkIntensity = document.getElementById('sparkIntensity');
+            const bondStability = document.getElementById('bondStability');
+            const auraAlignment = document.getElementById('auraAlignment');
+
+            resultScore.textContent = '';
+            resultMessage.textContent = '';
+            chemistryFactor.textContent = '';
+            syncRatio.textContent = '';
+            emotionalResonance.textContent = '';
+            affinityIndex.textContent = '';
+            vibeCohesion.textContent = '';
+            pulseHarmony.textContent = '';
+            sparkIntensity.textContent = '';
+            bondStability.textContent = '';
+            auraAlignment.textContent = '';
+
+            const scoreText = `Compatibility: ${score}%`;
+            const messageText = getLoveMessage(score);
+            const chemistryText = `${chemistry}%`;
+            const syncText = `${sync}%`;
+            const resonanceText = `${resonance}%`;
+            const affinityText = `${affinity}%`;
+            const vibeText = `${vibe}%`;
+            const pulseText = `${pulse}%`;
+            const sparkText = `${spark}%`;
+            const bondText = `${bond}%`;
+            const auraText = `${aura}%`;
+
+            let i = 0;
+            function typeScore() {
+                if (i < scoreText.length) {
+                    resultScore.textContent += scoreText[i];
+                    resultScore.classList.add('typing');
+                    i++;
+                    setTimeout(typeScore, 50);
+                } else {
+                    resultScore.classList.remove('typing');
+                    i = 0;
+                    typeMessage();
+                    // Apply flashing effect based on score
+                    resultScore.className = 'terminal-line';
+                    if (score >= 80) {
+                        resultScore.classList.add('flash-high');
+                        setTimeout(() => resultScore.classList.remove('flash-high'), 4000);
+                    } else if (score >= 50) {
+                        resultScore.classList.add('flash-medium');
+                        setTimeout(() => resultScore.classList.remove('flash-medium'), 3000);
+                    } else {
+                        resultScore.classList.add('flash-low');
+                        setTimeout(() => resultScore.classList.remove('flash-low'), 2000);
+                    }
+                }
+            }
+
+            function typeMessage() {
+                if (i < messageText.length) {
+                    resultMessage.textContent += messageText[i];
+                    resultMessage.classList.add('typing');
+                    i++;
+                    setTimeout(typeMessage, 50);
+                } else {
+                    resultMessage.classList.remove('typing');
+                    i = 0;
+                    typeChemistry();
+                }
+            }
+
+            function typeChemistry() {
+                if (i < chemistryText.length) {
+                    chemistryFactor.textContent += chemistryText[i];
+                    chemistryFactor.classList.add('typing');
+                    i++;
+                    setTimeout(typeChemistry, 50);
+                } else {
+                    chemistryFactor.classList.remove('typing');
+                    i = 0;
+                    typeSync();
+                }
+            }
+
+            function typeSync() {
+                if (i < syncText.length) {
+                    syncRatio.textContent += syncText[i];
+                    syncRatio.classList.add('typing');
+                    i++;
+                    setTimeout(typeSync, 50);
+                } else {
+                    syncRatio.classList.remove('typing');
+                    i = 0;
+                    typeResonance();
+                }
+            }
+
+            function typeResonance() {
+                if (i < resonanceText.length) {
+                    emotionalResonance.textContent += resonanceText[i];
+                    emotionalResonance.classList.add('typing');
+                    i++;
+                    setTimeout(typeResonance, 50);
+                } else {
+                    emotionalResonance.classList.remove('typing');
+                    i = 0;
+                    typeAffinity();
+                }
+            }
+
+            function typeAffinity() {
+                if (i < affinityText.length) {
+                    affinityIndex.textContent += affinityText[i];
+                    affinityIndex.classList.add('typing');
+                    i++;
+                    setTimeout(typeAffinity, 50);
+                } else {
+                    affinityIndex.classList.remove('typing');
+                    i = 0;
+                    typeVibe();
+                }
+            }
+
+            function typeVibe() {
+                if (i < vibeText.length) {
+                    vibeCohesion.textContent += vibeText[i];
+                    vibeCohesion.classList.add('typing');
+                    i++;
+                    setTimeout(typeVibe, 50);
+                } else {
+                    vibeCohesion.classList.remove('typing');
+                    i = 0;
+                    typePulse();
+                }
+            }
+
+            function typePulse() {
+                if (i < pulseText.length) {
+                    pulseHarmony.textContent += pulseText[i];
+                    pulseHarmony.classList.add('typing');
+                    i++;
+                    setTimeout(typePulse, 50);
+                } else {
+                    pulseHarmony.classList.remove('typing');
+                    i = 0;
+                    typeSpark();
+                }
+            }
+
+            function typeSpark() {
+                if (i < sparkText.length) {
+                    sparkIntensity.textContent += sparkText[i];
+                    sparkIntensity.classList.add('typing');
+                    i++;
+                    setTimeout(typeSpark, 50);
+                } else {
+                    sparkIntensity.classList.remove('typing');
+                    i = 0;
+                    typeBond();
+                }
+            }
+
+            function typeBond() {
+                if (i < bondText.length) {
+                    bondStability.textContent += bondText[i];
+                    bondStability.classList.add('typing');
+                    i++;
+                    setTimeout(typeBond, 50);
+                } else {
+                    bondStability.classList.remove('typing');
+                    i = 0;
+                    typeAura();
+                }
+            }
+
+            function typeAura() {
+                if (i < auraText.length) {
+                    auraAlignment.textContent += auraText[i];
+                    auraAlignment.classList.add('typing');
+                    i++;
+                    setTimeout(typeAura, 50);
+                } else {
+                    auraAlignment.classList.remove('typing');
+                }
+            }
+
+            typeScore();
+        }
+
+        function returnToInput() {
+            const inputScreen = document.getElementById('inputScreen');
+            const resultsScreen = document.getElementById('resultsScreen');
+            resultsScreen.style.display = 'none';
+            inputScreen.style.display = 'block';
+            document.getElementById('name1').value = '';
+            document.getElementById('name2').value = '';
+        }
+
+        function generateLoveScore(name1, name2) {
+            let sum = 0;
+            for (let i = 0; i < name1.length; i++) {
+                sum += name1.charCodeAt(i);
+            }
+            for (let i = 0; i < name2.length; i++) {
+                sum += name2.charCodeAt(i);
+            }
+            return sum % 101;
+        }
+
+        function generateChemistryFactor(name1, name2) {
+            let sum = (name1.length + name2.length) * 10;
+            return Math.min(100, sum % 101);
+        }
+
+        function generateSyncRatio(name1, name2) {
+            let sum = Math.abs(name1.length - name2.length) * 15;
+            return Math.min(100, (100 - (sum % 101)));
+        }
+
+        function generateEmotionalResonance(name1, name2) {
+            let sum = 0;
+            for (let i = 0; i < Math.min(name1.length, name2.length); i++) {
+                sum += Math.abs(name1.charCodeAt(i) - name2.charCodeAt(i));
+            }
+            return Math.min(100, (100 - (sum % 101)));
+        }
+
+        function generateAffinityIndex(name1, name2) {
+            let sum = (name1.length * name2.length) * 5;
+            return Math.min(100, sum % 101);
+        }
+
+        function generateVibeCohesion(name1, name2) {
+            let sum = (name1.charCodeAt(0) + name2.charCodeAt(0)) * 3;
+            return Math.min(100, sum % 101);
+        }
+
+        function generatePulseHarmony(name1, name2) {
+            let sum = Math.max(name1.length, name2.length) * 12;
+            return Math.min(100, sum % 101);
+        }
+
+        function generateSparkIntensity(name1, name2) {
+            let sum = (name1.length + name2.length) * 7;
+            return Math.min(100, sum % 101);
+        }
+
+        function generateBondStability(name1, name2) {
+            let sum = Math.min(name1.length, name2.length) * 20;
+            return Math.min(100, sum % 101);
+        }
+
+        function generateAuraAlignment(name1, name2) {
+            let sum = (name1.charCodeAt(name1.length - 1) + name2.charCodeAt(name2.length - 1)) * 4;
+            return Math.min(100, sum % 101);
+        }
+
+        function getLoveMessage(score) {
+            if (score >= 90) return 'Perfect Match! Cosmic Alignment Detected.';
+            if (score >= 70) return 'Strong Connection! High Compatibility.';
+            if (score >= 50) return 'Good Potential! Sparks Detected.';
+            if (score >= 30) return 'Needs Work... Proceed with Caution.';
+            return 'Low Compatibility. Minimal Synergy.';
+        }
+
+        let radarInterval, waveformInterval, heartRateInterval, binaryInterval, randomInterval;
+        function startRadar() {
+            const canvas = document.getElementById('radar');
+            const ctx = canvas.getContext('2d');
+            let angle = 0;
+
+            function drawRadar() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.strokeStyle = '#0f0';
+                ctx.lineWidth = 1;
+                for (let r = 40; r <= 80; r += 20) {
+                    ctx.beginPath();
+                    ctx.arc(100, 100, r, 0, Math.PI * 2);
+                    ctx.stroke();
+                }
+                ctx.beginPath();
+                ctx.moveTo(100, 20);
+                ctx.lineTo(100, 180);
+                ctx.moveTo(20, 100);
+                ctx.lineTo(180, 100);
+                ctx.stroke();
+                ctx.beginPath();
+                ctx.moveTo(100, 100);
+                ctx.lineTo(100 + 80 * Math.cos(angle), 100 + 80 * Math.sin(angle));
+                ctx.strokeStyle = 'rgba(0, 255, 0, 0.5)';
+                ctx.lineWidth = 2;
+                ctx.stroke();
+                angle += 0.1;
+                if (angle >= Math.PI * 2) angle = 0;
+            }
+
+            radarInterval = setInterval(drawRadar, 50);
+        }
+
+        function stopRadar() {
+            clearInterval(radarInterval);
+            const canvas = document.getElementById('radar');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startWaveform() {
+            const canvas = document.getElementById('waveform');
+            const ctx = canvas.getContext('2d');
+            let time = 0;
+
+            function drawWaveform() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.strokeStyle = '#0f0';
+                ctx.lineWidth = 2;
+                for (let x = 0; x < canvas.width; x++) {
+                    const y = 25 + Math.sin((x / 20) + time) * 15;
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                time += 0.2;
+            }
+
+            waveformInterval = setInterval(drawWaveform, 50);
+        }
+
+        function stopWaveform() {
+            clearInterval(waveformInterval);
+            const canvas = document.getElementById('waveform');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startHeartRate() {
+            const canvas = document.getElementById('heartRate');
+            const ctx = canvas.getContext('2d');
+            let time = 0;
+
+            function drawHeartRate() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                ctx.beginPath();
+                ctx.strokeStyle = '#0f0';
+                ctx.lineWidth = 2;
+                for (let x = 0; x < canvas.width; x++) {
+                    const t = (x / 20) + time;
+                    const y = 25 + (Math.sin(t) * 5 + Math.sin(t * 2) * 10) * (1 - Math.cos(t * 4));
+                    ctx.lineTo(x, y);
+                }
+                ctx.stroke();
+                ctx.fillStyle = '#0f0';
+                ctx.font = '12px Courier New';
+                ctx.fillText('BPM: ' + Math.floor(60 + Math.random() * 20), 10, 20);
+                time += 0.1;
+            }
+
+            heartRateInterval = setInterval(drawHeartRate, 50);
+        }
+
+        function stopHeartRate() {
+            clearInterval(heartRateInterval);
+            const canvas = document.getElementById('heartRate');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+        }
+
+        function startBinaryCalc() {
+            const binaryCalc = document.getElementById('binaryCalc');
+            function generateBinary() {
+                let binary = '';
+                for (let i = 0; i < 50; i++) {
+                    binary += Math.random() > 0.5 ? '1' : '0';
+                }
+                binaryCalc.textContent = `Binary Matrix: ${binary}`;
+            }
+            generateBinary();
+            binaryInterval = setInterval(generateBinary, 100);
+        }
+
+        function stopBinaryCalc() {
+            clearInterval(binaryInterval);
+            const binaryCalc = document.getElementById('binaryCalc');
+            binaryCalc.textContent = '';
+        }
+
+        function startRandomCalc() {
+            const randomCalc = document.getElementById('randomCalc');
+            function generateRandom() {
+                let calc = '';
+                for (let i = 0; i < 10; i++) {
+                    calc += Math.floor(Math.random() * 1000) + ' ';
+                }
+                randomCalc.textContent = `Calc Stream: ${calc}`;
+            }
+            generateRandom();
+            randomInterval = setInterval(generateRandom, 100);
+        }
+
+        function stopRandomCalc() {
+            clearInterval(randomInterval);
+            const randomCalc = document.getElementById('randomCalc');
+            randomCalc.textContent = '';
+        }
+
+        function drawDiagnosticGraph(values) {
+            const canvas = document.getElementById('diagnosticGraph');
+            const ctx = canvas.getContext('2d');
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+            const labels = ['Chem', 'Sync', 'Res', 'Aff', 'Vibe', 'Pulse', 'Spark', 'Bond', 'Aura'];
+            const barWidth = 50;
+            const maxHeight = 100;
+            const startX = 20;
+            const startY = 130;
+
+            // Draw axes
+            ctx.strokeStyle = '#0f0';
+            ctx.lineWidth = 1;
+            ctx.beginPath();
+            ctx.moveTo(startX, startY - maxHeight);
+            ctx.lineTo(startX, startY);
+            ctx.lineTo(startX + barWidth * values.length, startY);
+            ctx.stroke();
+
+            // Draw bars and labels
+            ctx.fillStyle = 'rgba(0, 255, 0, 0.5)';
+            ctx.font = '12px monospace';
+            for (let i = 0; i < values.length; i++) {
+                const height = (values[i] / 100) * maxHeight;
+                ctx.fillRect(startX + i * barWidth, startY - height, barWidth - 5, height);
+                ctx.fillStyle = '#0f0';
+                ctx.fillText(labels[i], startX + i * barWidth + 5, startY + 15);
+                ctx.fillText(values[i], startX + i * barWidth + 5, startY - height - 5);
+            }
+        }
+    </script>
+</body>
+</html>
